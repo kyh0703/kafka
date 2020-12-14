@@ -7,14 +7,6 @@ services:
     hostname: zookeeper
     ports:
       - "2181:2181"
-  zookeeper-web:
-    image: goodguide/zk-web
-    container_name: zookeeper-web
-    ports:
-      - "8080:8080"
-    environment:
-      - ZKWEB_PORT=8080
-      - ZKWEB_CREDENTIALS=admin:hello
   kafka:
     image: wurstmeister/kafka
     container_name: kafka
@@ -26,3 +18,11 @@ services:
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
+  zookeeper-web:
+    image: goodguide/zk-web
+    container_name: zookeeper-web
+    ports:
+      - "8080:8080"
+    environment:
+      - ZKWEB_PORT=8080
+      - ZKWEB_CREDENTIALS=admin:hello
