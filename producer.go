@@ -15,7 +15,7 @@ func NewProducer() *Producer {
 	config.Producer.RequiredAcks = sarama.WaitForAll
 	config.Producer.Return.Successes = true
 	c, err := sarama.NewSyncProducer([]string{
-		"kafka:9092",
+		"127.0.0.1:9092",
 	}, config)
 	if err != nil {
 		panic(err)
@@ -42,13 +42,13 @@ func (p *Producer) SendStringData(message string) error {
 	fmt.Printf("%d/%d\n", partition, offset)
 	return nil
 }
+
 func main() {
 	p := NewProducer()
 	for i := 0; i < 30; i++ {
-		err := p.SendStringData(fmt.Sprintf("Message #%d\n", i))
+		err := p.SendStringData(fmt.Sprintf("Message kyh #%d\n", i))
 		if err != nil {
 			return
 		}
-		fmt.Println("간다간다", i)
 	}
 }
