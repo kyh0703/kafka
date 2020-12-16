@@ -15,8 +15,11 @@ type Consumer struct {
 }
 
 func NewConsumer() (*Consumer, error) {
+	config := sarama.NewConfig()
+	config.Consumer.Offsets.AutoCommit.Enable = true
+	config.Consumer.Offsets.Retry.Max = 0
 	consumer, err := sarama.NewConsumer([]string{
-		"127.0.0.1:9092"}, nil)
+		"127.0.0.1:9092"}, config)
 	if err != nil {
 		panic(err)
 	}
