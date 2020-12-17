@@ -15,9 +15,9 @@ func NewProducer() *Producer {
 	config.Producer.RequiredAcks = sarama.WaitForAll
 	config.Producer.Return.Successes = true
 	c, err := sarama.NewSyncProducer([]string{
-		"kafka1:9092",
-		"kafka2:9093",
-		"kafka3:9094",
+		"192.168.115.48:9092",
+		"192.168.115.48:9093",
+		"192.168.115.48:9094",
 	}, config)
 	if err != nil {
 		panic(err)

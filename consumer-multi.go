@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"github.com/Shopify/sarama"
-	"index/suffixarray"
 	"os"
 	"os/signal"
 	"syscall"
