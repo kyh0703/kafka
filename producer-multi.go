@@ -15,9 +15,9 @@ func NewProducer() *Producer {
 	config.Producer.RequiredAcks = sarama.WaitForAll
 	config.Producer.Return.Successes = true
 	c, err := sarama.NewSyncProducer([]string{
-		"192.168.115.48:9092",
-		"192.168.115.48:9093",
-		"192.168.115.48:9094",
+		"127.0.0.1:9092",
+		"127.0.0.1:9093",
+		"127.0.0.1:9094",
 	}, config)
 	if err != nil {
 		panic(err)
@@ -50,6 +50,7 @@ func main() {
 	for i := 0; i < 30; i++ {
 		err := p.SendStringData(fmt.Sprintf("Message kyh #%d\n", i))
 		if err != nil {
+			panic(err)
 			return
 		}
 	}
