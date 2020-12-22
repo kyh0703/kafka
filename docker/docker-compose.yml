@@ -154,18 +154,24 @@ services:
       KM_ARGS: -Djava.net.preferIPv4Stack=true
 
   # ksql
-  # schema-registry:
-  #   image: confluentinc/cp-schema-registry
-  #   depends_on:
-  #     - zoo1
-  #     - zoo2
-  #     - zoo3
-  #     - kafka1
-  #     - kafka2
-  #     - kafka3
-  #   environment:
-  #     SCHEMA_REGISTRY_HOST_NAME: schema-registry
-  #     SCHEMA_REGISTRY_KAFKASTORE_CONNECTION_URL: zoo1:2181,zoo2:2181,zoo3:2181/peter-kafka
+  schema-registry:
+    image: confluentinc/cp-schema-registry
+    container_name: schema-registry
+    hostname: schema-registry
+    restart: always
+    ports:
+      - "8081:8081"
+    depends_on:
+      - zoo1
+      - zoo2
+      - zoo3
+      - kafka1
+      - kafka2
+      - kafka3
+    environment:
+      SCHEMA_REGISTRY_HOST_NAME: schema-registry
+      SCHEMA_REGISTRY_LISTENERS: http://0.0.0.0:8081
+      SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: PLAINTEXT://kafka1:19092
 
   # primary-ksqldb-server:
   #   image: confluentinc/ksqldb-server
