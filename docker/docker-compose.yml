@@ -14,6 +14,7 @@ services:
     volumes:
       - ./zk-multiple-kafka-multiple/zoo1/data:/data
       - ./zk-multiple-kafka-multiple/zoo1/datalog:/datalog
+
   zoo2:
     image: zookeeper
     container_name: zoo2
@@ -26,6 +27,7 @@ services:
     volumes:
       - ./zk-multiple-kafka-multiple/zoo2/data:/data
       - ./zk-multiple-kafka-multiple/zoo2/datalog:/datalog
+
   zoo3:
     image: zookeeper
     container_name: zoo3
@@ -38,6 +40,7 @@ services:
     volumes:
       - ./zk-multiple-kafka-multiple/zoo3/data:/data
       - ./zk-multiple-kafka-multiple/zoo3/datalog:/datalog
+
   # 카프카 설정
   kafka1:
     image: wurstmeister/kafka
@@ -53,6 +56,12 @@ services:
       KAFKA_ZOOKEEPER_CONNECT: "zoo1:2181,zoo2:2181,zoo3:2181/peter-kafka"
       KAFKA_BROKER_ID: 1
       KAFKA_LOG4J_LOGGERS: "kafka.controller=INFO,kafka.producer.async.DefaultEventHandler=INFO,state.change.logger=INFO"
+      KAFKA_JMX_OPTS: >-
+        -Dcom.sun.management.jmxremote
+        -Dcom.sun.management.jmxremote.authenticate=false
+        -Dcom.sun.management.jmxremote.ssl=false
+        -Djava.rmi.server.hostname=kafka1
+        -Dcom.sun.management.jmxremote.rmi.port=1099
       JMX_PORT: 1099
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
@@ -60,6 +69,7 @@ services:
       - zoo1
       - zoo2
       - zoo3
+
   kafka2:
     image: wurstmeister/kafka
     container_name: kafka2
@@ -74,6 +84,12 @@ services:
       KAFKA_ZOOKEEPER_CONNECT: "zoo1:2181,zoo2:2181,zoo3:2181/peter-kafka"
       KAFKA_BROKER_ID: 2
       KAFKA_LOG4J_LOGGERS: "kafka.controller=INFO,kafka.producer.async.DefaultEventHandler=INFO,state.change.logger=INFO"
+      KAFKA_JMX_OPTS: >-
+        -Dcom.sun.management.jmxremote
+        -Dcom.sun.management.jmxremote.authenticate=false
+        -Dcom.sun.management.jmxremote.ssl=false
+        -Djava.rmi.server.hostname=kafka2
+        -Dcom.sun.management.jmxremote.rmi.port=2099
       JMX_PORT: 2099
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
@@ -81,6 +97,7 @@ services:
       - zoo1
       - zoo2
       - zoo3
+
   kafka3:
     image: wurstmeister/kafka
     container_name: kafka3
@@ -95,6 +112,12 @@ services:
       KAFKA_ZOOKEEPER_CONNECT: "zoo1:2181,zoo2:2181,zoo3:2181/peter-kafka"
       KAFKA_BROKER_ID: 3
       KAFKA_LOG4J_LOGGERS: "kafka.controller=INFO,kafka.producer.async.DefaultEventHandler=INFO,state.change.logger=INFO"
+      KAFKA_JMX_OPTS: >-
+        -Dcom.sun.management.jmxremote
+        -Dcom.sun.management.jmxremote.authenticate=false
+        -Dcom.sun.management.jmxremote.ssl=false
+        -Djava.rmi.server.hostname=kafka3
+        -Dcom.sun.management.jmxremote.rmi.port=3099
       JMX_PORT: 3099
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
@@ -102,6 +125,7 @@ services:
       - zoo1
       - zoo2
       - zoo3
+
   # 주키퍼 웹 설정
   zk-web:
     image: goodguide/zk-web
@@ -111,6 +135,7 @@ services:
     environment:
       - ZKWEB_PORT=8080
       - ZKWEB_CREDENTIALS=admin:hello
+
   # 카프카 매니저
   kafka-manager:
     image: sheepkiller/kafka-manager
@@ -127,3 +152,57 @@ services:
       ZK_HOSTS: zoo1:2181,zoo2:2181,zoo3:2181/peter-kafka
       APPLICATION_SECRET: letmein
       KM_ARGS: -Djava.net.preferIPv4Stack=true
+
+  # ksql
+  # schema-registry:
+  #   image: confluentinc/cp-schema-registry
+  #   depends_on:
+  #     - zoo1
+  #     - zoo2
+  #     - zoo3
+  #     - kafka1
+  #     - kafka2
+  #     - kafka3
+  #   environment:
+  #     SCHEMA_REGISTRY_HOST_NAME: schema-registry
+  #     SCHEMA_REGISTRY_KAFKASTORE_CONNECTION_URL: zoo1:2181,zoo2:2181,zoo3:2181/peter-kafka
+
+  # primary-ksqldb-server:
+  #   image: confluentinc/ksqldb-server
+  #   hostname: primary-ksqldb-server
+  #   container_name: primary-ksqldb-server
+  #   depends_on:
+  #     - kafka1
+  #     - kafka2
+  #     - kafka3
+  #     - schema-registry
+  #   ports:
+  #     - "8088:8088"
+  #   environment:
+  #     KSQL_LISTENERS: http://0.0.0.0:8088
+  #     KSQL_BOOTSTRAP_SERVERS: kafka1:9092,kafka2:9093,kafka3:9094
+  #     KSQL_KSQL_SCHEMA_REGISTRY_URL: http://schema-registry:8081
+  #     KSQL_KSQL_LOGGING_PROCESSING_STREAM_AUTO_CREATE: "true"
+  #     KSQL_KSQL_LOGGING_PROCESSING_TOPIC_AUTO_CREATE: "true"
+
+  # additional-ksqldb-server:
+  #   image: confluentinc/ksqldb-server
+  #   hostname: additional-ksqldb-server
+  #   depends_on:
+  #     - primary-ksqldb-server
+  #   ports:
+  #     - "8090"
+  #   environment:
+  #     KSQL_LISTENERS: http://0.0.0.0:8090
+  #     KSQL_BOOTSTRAP_SERVERS: kafka1:9092,kafka2:9093,kafka3:9094
+  #     KSQL_KSQL_SCHEMA_REGISTRY_URL: http://schema-registry:8081
+
+  # # Access the cli by running:
+  # # > docker-compose exec ksqldb-cli  ksql http://primary-ksqldb-server:8088
+  # ksqldb-cli:
+  #   image: confluentinc/ksqldb-cli
+  #   container_name: ksqldb-cli
+  #   depends_on:
+  #     - primary-ksqldb-server
+  #   entrypoint: /bin/sh
+  #   tty: true
