@@ -6,6 +6,7 @@ services:
     image: zookeeper
     container_name: zoo1
     hostname: zoo1
+    restart: always
     ports:
       - "2181:2181"
     environment:
@@ -19,6 +20,7 @@ services:
     image: zookeeper
     container_name: zoo2
     hostname: zoo2
+    restart: always
     ports:
       - "2182:2181"
     environment:
@@ -32,6 +34,7 @@ services:
     image: zookeeper
     container_name: zoo3
     hostname: zoo3
+    restart: always
     ports:
       - "2183:2181"
     environment:
@@ -46,6 +49,7 @@ services:
     image: wurstmeister/kafka
     container_name: kafka1
     hostname: kafka1
+    restart: always
     ports:
       - "9092:9092"
     environment:
@@ -56,13 +60,13 @@ services:
       KAFKA_ZOOKEEPER_CONNECT: "zoo1:2181,zoo2:2181,zoo3:2181/peter-kafka"
       KAFKA_BROKER_ID: 1
       KAFKA_LOG4J_LOGGERS: "kafka.controller=INFO,kafka.producer.async.DefaultEventHandler=INFO,state.change.logger=INFO"
+      JMX_PORT: 1099
       KAFKA_JMX_OPTS: >-
         -Dcom.sun.management.jmxremote
         -Dcom.sun.management.jmxremote.authenticate=false
         -Dcom.sun.management.jmxremote.ssl=false
         -Djava.rmi.server.hostname=kafka1
-        -Dcom.sun.management.jmxremote.rmi.port=1099
-      JMX_PORT: 1099
+        -Djava.net.preferIPv4Stack=true
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     depends_on:
@@ -74,6 +78,7 @@ services:
     image: wurstmeister/kafka
     container_name: kafka2
     hostname: kafka2
+    restart: always
     ports:
       - "9093:9093"
     environment:
@@ -84,13 +89,14 @@ services:
       KAFKA_ZOOKEEPER_CONNECT: "zoo1:2181,zoo2:2181,zoo3:2181/peter-kafka"
       KAFKA_BROKER_ID: 2
       KAFKA_LOG4J_LOGGERS: "kafka.controller=INFO,kafka.producer.async.DefaultEventHandler=INFO,state.change.logger=INFO"
+      JMX_PORT: 1099
       KAFKA_JMX_OPTS: >-
         -Dcom.sun.management.jmxremote
         -Dcom.sun.management.jmxremote.authenticate=false
         -Dcom.sun.management.jmxremote.ssl=false
         -Djava.rmi.server.hostname=kafka2
-        -Dcom.sun.management.jmxremote.rmi.port=2099
-      JMX_PORT: 2099
+        -Djava.net.preferIPv4Stack=true
+        -Dcom.sun.management.jmxremote.port=1099
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     depends_on:
@@ -102,6 +108,7 @@ services:
     image: wurstmeister/kafka
     container_name: kafka3
     hostname: kafka3
+    restart: always
     ports:
       - "9094:9094"
     environment:
@@ -112,13 +119,14 @@ services:
       KAFKA_ZOOKEEPER_CONNECT: "zoo1:2181,zoo2:2181,zoo3:2181/peter-kafka"
       KAFKA_BROKER_ID: 3
       KAFKA_LOG4J_LOGGERS: "kafka.controller=INFO,kafka.producer.async.DefaultEventHandler=INFO,state.change.logger=INFO"
+      JMX_PORT: 1099
       KAFKA_JMX_OPTS: >-
         -Dcom.sun.management.jmxremote
         -Dcom.sun.management.jmxremote.authenticate=false
         -Dcom.sun.management.jmxremote.ssl=false
         -Djava.rmi.server.hostname=kafka3
-        -Dcom.sun.management.jmxremote.rmi.port=3099
-      JMX_PORT: 3099
+        -Djava.net.preferIPv4Stack=true
+        -Dcom.sun.management.jmxremote.port=1099
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     depends_on:
@@ -173,42 +181,80 @@ services:
       SCHEMA_REGISTRY_LISTENERS: http://0.0.0.0:8081
       SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: PLAINTEXT://kafka1:19092
 
-  # primary-ksqldb-server:
-  #   image: confluentinc/ksqldb-server
-  #   hostname: primary-ksqldb-server
-  #   container_name: primary-ksqldb-server
+  ksql:
+    image: confluentinc/ksqldb-server
+    hostname: ksql
+    container_name: ksql
+    depends_on:
+      - kafka1
+      - kafka2
+      - kafka3
+      - schema-registry
+    ports:
+      - "8088:8088"
+    environment:
+      KSQL_LISTENERS: http://0.0.0.0:8088
+      KSQL_BOOTSTRAP_SERVERS: kafka1:9092,kafka2:9093,kafka3:9094
+      KSQL_KSQL_SCHEMA_REGISTRY_URL: http://schema-registry:8081
+      KSQL_KSQL_LOGGING_PROCESSING_STREAM_AUTO_CREATE: "true"
+      KSQL_KSQL_LOGGING_PROCESSING_TOPIC_AUTO_CREATE: "true"
+
+  # Access the cli by running:
+  ksql-cli:
+    image: confluentinc/ksqldb-cli
+    container_name: ksql-cli
+    hostname: ksql-cli
+    depends_on:
+      - ksql
+    entrypoint: /bin/sh
+    tty: true
+
+  # ksql-datagen-pageview:
+  #   image: "confluentinc/ksql-examples:4.1.0"
+  #   container_name: ksql-datagen-pageviews
+  #   hostname: ksql-datagen-pageviews
   #   depends_on:
   #     - kafka1
   #     - kafka2
   #     - kafka3
   #     - schema-registry
-  #   ports:
-  #     - "8088:8088"
+  #     - ksql
+  #   command: "bash -c 'echo Waiting for Kafka to be ready... && \
+  #                      cub kafka-ready -b kafka1:9092 1 20 && \
+  #                      echo Waiting for Confluent Schema Registry to be ready... && \
+  #                      cub sr-ready schema-registry 8081 20 && \
+  #                      echo Waiting a few seconds for topic creation to finish... && \
+  #                      sleep 2 && \
+  #                      java -jar /usr/share/java/ksql-examples/ksql-examples-4.1.1-SNAPSHOT-standalone.jar quickstart=pageviews format=delimited topic=pageviews bootstrap-server=kafka1:9092 maxInterval=100 iterations=1000 && \
+  #                      java -jar /usr/share/java/ksql-examples/ksql-examples-4.1.1-SNAPSHOT-standalone.jar quickstart=pageviews format=delimited topic=pageviews bootstrap-server=kafka1:9092 maxInterval=1000'"
   #   environment:
-  #     KSQL_LISTENERS: http://0.0.0.0:8088
-  #     KSQL_BOOTSTRAP_SERVERS: kafka1:9092,kafka2:9093,kafka3:9094
-  #     KSQL_KSQL_SCHEMA_REGISTRY_URL: http://schema-registry:8081
-  #     KSQL_KSQL_LOGGING_PROCESSING_STREAM_AUTO_CREATE: "true"
-  #     KSQL_KSQL_LOGGING_PROCESSING_TOPIC_AUTO_CREATE: "true"
+  #     KSQL_CONFIG_DIR: "/etc/ksql"
+  #     KSQL_LOG4J_OPTS: "-Dlog4j.configuration=file:/etc/ksql/log4j-rolling.properties"
+  #     STREAMS_BOOTSTRAP_SERVERS: kafka1:9092
+  #     STREAMS_SCHEMA_REGISTRY_HOST: schema-registry
+  #     STREAMS_SCHEMA_REGISTRY_PORT: 8081
 
-  # additional-ksqldb-server:
-  #   image: confluentinc/ksqldb-server
-  #   hostname: additional-ksqldb-server
+  # ksql-datagen-users:
+  #   image: "confluentinc/ksql-examples:4.1.0"
+  #   container_name: ksql-datagen-users
+  #   hostname: ksql-datagen-users
   #   depends_on:
-  #     - primary-ksqldb-server
-  #   ports:
-  #     - "8090"
+  #     - kafka1
+  #     - kafka2
+  #     - kafka3
+  #     - schema-registry
+  #     - ksql
+  #   command: "bash -c 'echo Waiting for Kafka to be ready... && \
+  #                      cub kafka-ready -b kafka1:9092 1 20 && \
+  #                      echo Waiting for Confluent Schema Registry to be ready... && \
+  #                      cub sr-ready schema-registry 8081 20 && \
+  #                      echo Waiting a few seconds for topic creation to finish... && \
+  #                      sleep 2 && \
+  #                      java -jar /usr/share/java/ksql-examples/ksql-examples-4.1.1-SNAPSHOT-standalone.jar quickstart=users format=json topic=users bootstrap-server=kafka1:9092 maxInterval=100 iterations=1000 && \
+  #                      java -jar /usr/share/java/ksql-examples/ksql-examples-4.1.1-SNAPSHOT-standalone.jar quickstart=users format=json topic=users bootstrap-server=kafka1:9092 maxInterval=1000'"
   #   environment:
-  #     KSQL_LISTENERS: http://0.0.0.0:8090
-  #     KSQL_BOOTSTRAP_SERVERS: kafka1:9092,kafka2:9093,kafka3:9094
-  #     KSQL_KSQL_SCHEMA_REGISTRY_URL: http://schema-registry:8081
-
-  # # Access the cli by running:
-  # # > docker-compose exec ksqldb-cli  ksql http://primary-ksqldb-server:8088
-  # ksqldb-cli:
-  #   image: confluentinc/ksqldb-cli
-  #   container_name: ksqldb-cli
-  #   depends_on:
-  #     - primary-ksqldb-server
-  #   entrypoint: /bin/sh
-  #   tty: true
+  #     KSQL_CONFIG_DIR: "/etc/ksql"
+  #     KSQL_LOG4J_OPTS: "-Dlog4j.configuration=file:/etc/ksql/log4j-rolling.properties"
+  #     STREAMS_BOOTSTRAP_SERVERS: kafka1:9092
+  #     STREAMS_SCHEMA_REGISTRY_HOST: schema-registry
+  #     STREAMS_SCHEMA_REGISTRY_PORT: 8081
