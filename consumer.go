@@ -2,11 +2,12 @@ package main
 
 import (
 	"fmt"
-	"github.com/Shopify/sarama"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
+
+	"github.com/Shopify/sarama"
 )
 
 type Consumer struct {
@@ -19,7 +20,8 @@ func NewConsumer() (*Consumer, error) {
 	config.Consumer.Offsets.AutoCommit.Enable = true
 	config.Consumer.Offsets.Retry.Max = 0
 	consumer, err := sarama.NewConsumer([]string{
-		"127.0.0.1:9092"}, config)
+		"192.168.115.48:9092",
+	}, config)
 	if err != nil {
 		panic(err)
 	}
