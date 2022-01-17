@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+
 	"github.com/Shopify/sarama"
 )
 
@@ -15,7 +16,7 @@ func NewProducer() *Producer {
 	config.Producer.RequiredAcks = sarama.WaitForAll
 	config.Producer.Return.Successes = true
 	c, err := sarama.NewSyncProducer([]string{
-		"127.0.0.1:9092",
+		"192.168.115.48:9092",
 	}, config)
 	if err != nil {
 		panic(err)
